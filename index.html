@@ -842,6 +842,7 @@ html[dir="ltr"] .ps-v{text-align:right !important}
       $('lvBal').textContent = l.balance - l.pendingAnnual;
       loadPhoto(p);
       renderBio();
+
     }).catch(function (e) { handleError(e); });
   }
 
@@ -1051,7 +1052,7 @@ html[dir="ltr"] .ps-v{text-align:right !important}
   var LS_DEV = 'flexpet_portal_device';
   function devGet() { try { return JSON.parse(localGet(LS_DEV) || 'null'); } catch (e) { return null; } }
   function devSet(o) { localSet(LS_DEV, o ? JSON.stringify(o) : ''); }
-  function bioSupported() { return !!(window.isSecureContext && window.PublicKeyCredential && navigator.credentials && navigator.credentials.create); }
+  function bioSupported() { return !!(window.isSecureContext && location.protocol === 'https:' && window.PublicKeyCredential && navigator.credentials && navigator.credentials.create); }
   function rnd(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
   function toB64u(buf) {
     var b = new Uint8Array(buf), s = '';
@@ -1068,7 +1069,7 @@ html[dir="ltr"] .ps-v{text-align:right !important}
     var plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || 'Device';
     return plat + ' · ' + new Date().toISOString().slice(0, 10);
   }
-  var BIO_CANCEL = 'تم الإلغاء | Cancelled';
+  var BIO_CANCEL = 'تم الإلغاء، أو مفيش بصمة/قفل شاشة متسجل على الموبايل. سجّل بصمتك من إعدادات الموبايل وحاول تاني | Cancelled, or no fingerprint/screen lock is set up on this phone. Set one up in phone settings and try again';
   var BIO_UNSUPPORTED = 'الدخول بالبصمة محتاج رابط https وموبايل عليه بصمة أو قفل شاشة | Fingerprint sign-in needs an https link and a phone with fingerprint or screen lock';
 
   function renderBioLogin() {
@@ -1090,7 +1091,7 @@ html[dir="ltr"] .ps-v{text-align:right !important}
     $('bioEnable').disabled = true;
     var credId;
     navigator.credentials.create({ publicKey: {
-      challenge: rnd(32), rp: { name: 'Flex PET Employee Portal' },
+      challenge: rnd(32), rp: { name: 'Flex PET Employee Portal', id: location.hostname },
       user: { id: new TextEncoder().encode(String(p.EmpCode)), name: String(p.EmpCode), displayName: pair(p.NameAr, p.NameEn) || String(p.EmpCode) },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' },
@@ -1103,8 +1104,8 @@ html[dir="ltr"] .ps-v{text-align:right !important}
       msg($('bioMsg'), 'تم التفعيل. المرة الجاية تقدر تدخل بالبصمة. | Turned on. Next time you can sign in with your fingerprint.', 'ok');
       renderBio();
     }).catch(function (e) {
-      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) msg($('bioMsg'), BIO_CANCEL, 'info');
-      else if (!handleError(e)) msg($('bioMsg'), (e && e.message) || BIO_UNSUPPORTED, 'err');
+      if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) msg($('bioMsg'), BIO_CANCEL.split(' | ').map(function (t) { return t + ' (' + e.name + ')'; }).join(' | '), 'info');
+      else if (!handleError(e)) msg($('bioMsg'), ((e && e.name) ? '(' + e.name + ') ' : '') + ((e && e.message) || BIO_UNSUPPORTED), 'err');
     }).then(function () { $('bioEnable').disabled = false; });
   });
 
@@ -1144,9 +1145,9 @@ html[dir="ltr"] .ps-v{text-align:right !important}
         if (/غير مفعّل/.test(e.message)) { devSet(null); renderBioLogin(); }   // HR cut this device: forget it
         msg($('loginMsg'), e.message, 'err');
       } else if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) {
-        msg($('loginMsg'), BIO_CANCEL, 'info');
+        msg($('loginMsg'), BIO_CANCEL.split(' | ').map(function (t) { return t + ' (' + e.name + ')'; }).join(' | '), 'info');
       } else {
-        msg($('loginMsg'), (e && e.message) || BIO_UNSUPPORTED, 'err');
+        msg($('loginMsg'), ((e && e.name) ? '(' + e.name + ') ' : '') + ((e && e.message) || BIO_UNSUPPORTED), 'err');
       }
     }).then(function () { $('bioBtn').disabled = false; });
   });
